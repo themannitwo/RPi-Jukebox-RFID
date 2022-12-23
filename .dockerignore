@@ -1,0 +1,16 @@
+.git
+.dockerignore
+.DS_Store
+
+# Application
+docker
+docs
+installation
+src
+shared
+
+# webapp
+!src/webapp
+src/webapp/node_modules
+src/webapp/npm-debug.log
+src/webapp/build
