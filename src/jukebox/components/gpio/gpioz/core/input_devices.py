@@ -20,6 +20,7 @@ from enum import Enum
 from typing import Callable
 
 import gpiozero
+from gpiozero.threads import GPIOThread
 from abc import ABC, abstractmethod
 import logging
 import jukebox.utils
@@ -716,3 +717,54 @@ class TwinButton(NameMixin):
         self.on_long_press_a = self._decode_rpc_action('on_long_press_a', action_config)
         self.on_long_press_b = self._decode_rpc_action('on_long_press_b', action_config)
         self.on_long_press_ab = self._decode_rpc_action('on_long_press_ab', action_config)
+
+
+class AnalogInput(NameMixin):
+    """
+    A varying input value from an A/D converter source.
+    
+    It continuously polls the A/D converter and fires a value_changed event whenever the value differs from the previous value.
+    The sensitivity can be adjusted by setting max_value and step.
+    For example:
+    max_value = 100
+    step = 5
+
+    That is, the values reported will be: 0, 5, 10, 15, ..., 95, 100.
+    Could be used for volume
+
+    Currently only supporting MCP3008 as that is what I have installed.
+
+    :param spi_device: SPI device number, 0 or 1
+    :param channel: Channel on the ADC, 0..7
+    :param max_value: Max value to be reported
+    :param step: Step size of values
+    :param invert: bool, if True then the value reported is max_value - value
+
+    """
+    def __init__(self, device, channel, max_value=100, step=1, invert=False, pin_factory=None, name=None):
+        super().__init__(pin_factory, name)
+        self._analog_device = gpiozero.MCP3008(channel=channel, port=0, device=device)
+        self._last_value = 0
+        self._poll_delay = 0.1
+        self._max_value = max_value
+        self._step = step
+        self._invert = invert
+        self._thread = GPIOThread(self._watch_value_in_thread)
+        self._thread.start()
+
+    def _watch_value_in_thread(self):
+        while not self._thread.stopping.wait(self._poll_delay):
+            current_value = int((self._analog_device.value * self.max_value) // self._step * self._step)
+            if current_value != self._last_value:
+                self._last_value = current_value
+                self._fire_value_changed(self._last_value)
+    
+    def _fire_value_changed(self, new_value):
+        if self.on_value_changed:
+            self.on_value_changed(new_value)
+
+    on_value_changed = EventProperty(
+        """  
+        The function to run when a different value than before has been read from the ADC. Receives the new value as param.
+        """
+    )
