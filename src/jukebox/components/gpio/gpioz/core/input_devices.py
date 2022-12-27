@@ -742,7 +742,7 @@ class AnalogInput(NameMixin):
 
     """
     def __init__(self, device, channel, max_value=100, step=1, invert=False, pin_factory=None, name=None):
-        super().__init__(pin_factory=pin_factory, name=name)
+        super().__init__(name=name)
         self._analog_device = gpiozero.MCP3008(channel=channel, port=0, device=device)
         self._last_value = 0
         self._poll_delay = 0.1
