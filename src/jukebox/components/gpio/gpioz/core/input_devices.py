@@ -768,3 +768,6 @@ class AnalogInput(NameMixin):
         The function to run when a different value than before has been read from the ADC. Receives the new value as param.
         """
     )
+
+    def set_rpc_actions(self, action_config):
+        self.on_value_changed = self._decode_rpc_action('on_value_changed', action_config)
