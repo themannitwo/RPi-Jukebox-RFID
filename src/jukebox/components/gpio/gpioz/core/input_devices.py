@@ -754,11 +754,14 @@ class AnalogInput(NameMixin):
 
     def _watch_value_in_thread(self):
         logger.debug("AnalogInput: Running Watcher Thread")
-        while not self._thread.stopping.wait(self._poll_delay):
-            current_value = int((self._analog_device.value * self._max_value) // self._step * self._step)
-            if current_value != self._last_value:
-                self._last_value = current_value
-                self._fire_value_changed(self._last_value)
+        try:
+            while not self._thread.stopping.wait(self._poll_delay):
+                current_value = int((self._analog_device.value * self._max_value) // self._step * self._step)
+                if current_value != self._last_value:
+                    self._last_value = current_value
+                    self._fire_value_changed(self._last_value if not self._invert else self._max_value - self._last_value)
+        except Exception as e:
+            logger.error(e)
         logger.debug("AnalogInput: Ending watcher thread")
     
     def _fire_value_changed(self, new_value):
