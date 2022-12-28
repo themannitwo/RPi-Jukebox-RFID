@@ -759,7 +759,7 @@ class AnalogInput(NameMixin):
             current_value_to_scale = round(self._analog_device.value * self._max_value)
             lower_bound = self._last_value - self._step
             upper_bound = self._last_value + self._step
-            if current_value_to_scale < lower_bound or current_value_to_scale > upper_bound:
+            if current_value_to_scale <= lower_bound or current_value_to_scale >= upper_bound:
                 current_value = current_value_to_scale // self._step * self._step
                 logger.debug(f"{self.name} - New value: {current_value}")
                 self._last_value = current_value
