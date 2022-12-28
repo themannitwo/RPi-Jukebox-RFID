@@ -753,16 +753,18 @@ class AnalogInput(NameMixin):
         self._thread.start()
 
     def _watch_value_in_thread(self):
-        logger.debug("AnalogInput: Running Watcher Thread")
-        try:
-            while not self._thread.stopping.wait(self._poll_delay):
-                current_value = int((self._analog_device.value * self._max_value) // self._step * self._step)
-                if current_value != self._last_value:
-                    self._last_value = current_value
-                    self._fire_value_changed(self._last_value if not self._invert else self._max_value - self._last_value)
-        except Exception as e:
-            logger.error(e)
-        logger.debug("AnalogInput: Ending watcher thread")
+        logger.debug(f"{self.name}: Running Watcher Thread")
+        while not self._thread.stopping.wait(self._poll_delay):
+            current_value_to_scale = int(self._analog_device.value * self._max_value)
+            lower_bound = self._last_value - self._step
+            upper_bound = self._last_value + self._step
+            if current_value_to_scale < lower_bound or current_value_to_scale > upper_bound:
+                current_value = current_value // self._step * self._step
+                logger.debug(f"{self.name} - New value: {current_value}")
+                self._last_value = current_value
+                pub_value = self._last_value if not self._invert else self._max_value - self._last_value
+                self._fire_value_changed(pub_value)
+        logger.debug(f"{self.name}: Ending watcher thread")
     
     def _fire_value_changed(self, new_value):
         if self.on_value_changed:
