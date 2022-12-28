@@ -739,13 +739,14 @@ class AnalogInput(NameMixin):
     :param max_value: Max value to be reported
     :param step: Step size of values
     :param invert: bool, if True then the value reported is max_value - value
+    :param poll_delay: float, Delay in s when polling the ADC
 
     """
-    def __init__(self, device, channel, max_value=100, step=1, invert=False, pin_factory=None, name=None):
+    def __init__(self, device, channel, max_value=100, step=1, invert=False, poll_delay=1.0, pin_factory=None, name=None):
         super().__init__(name=name)
         self._analog_device = gpiozero.MCP3008(channel=channel, port=0, device=device)
         self._last_value = 0
-        self._poll_delay = 1.0
+        self._poll_delay = poll_delay
         self._max_value = max_value
         self._step = step
         self._invert = invert
@@ -755,7 +756,7 @@ class AnalogInput(NameMixin):
     def _watch_value_in_thread(self):
         logger.debug(f"{self.name}: Running Watcher Thread")
         while not self._thread.stopping.wait(self._poll_delay):
-            current_value_to_scale = int(self._analog_device.value * self._max_value)
+            current_value_to_scale = round(self._analog_device.value * self._max_value)
             lower_bound = self._last_value - self._step
             upper_bound = self._last_value + self._step
             if current_value_to_scale < lower_bound or current_value_to_scale > upper_bound:
@@ -778,3 +779,32 @@ class AnalogInput(NameMixin):
 
     def set_rpc_actions(self, action_config):
         self.on_value_changed = self._decode_rpc_action('on_value_changed', action_config)
+
+
+class ADCButton(AnalogInput):
+    PRESSED_VALUE = 0
+
+    """
+    Represents a simple push button, that is wired to an A/D Converter (as a means of extending the number of buttons available).
+    Fires on_pressed event, when the button has been pressed.
+    """
+    def __init__(self, device, channel):
+        super().__init__(device, channel, 1, 1, False, 0.1)
+        self.on_value_changed = self.translate_value_changed
+
+    def translate_value_changed(self, new_value):
+        if new_value == ADCButton.PRESSED_VALUE:
+            self._fire_pressed()
+
+    def _fire_pressed(self):
+        if self.on_press:
+            self.on_press()
+
+    on_press = EventProperty(
+        """
+        The function to run when the button is pressed.
+        """
+    )
+
+    def set_rpc_actions(self, action_config):
+        self.on_press = self._decode_rpc_action('on_press', action_config)
