@@ -788,8 +788,8 @@ class ADCButton(AnalogInput):
     Represents a simple push button, that is wired to an A/D Converter (as a means of extending the number of buttons available).
     Fires on_pressed event, when the button has been pressed.
     """
-    def __init__(self, device, channel):
-        super().__init__(device, channel, 1, 1, False, 0.1)
+    def __init__(self, device, channel, pin_factory=None, name=None):
+        super().__init__(device, channel, 1, 1, False, 0.1, pin_factory, name)
         self.on_value_changed = self.translate_value_changed
 
     def translate_value_changed(self, new_value):
